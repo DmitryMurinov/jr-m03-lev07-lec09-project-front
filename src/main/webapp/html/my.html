@@ -6,6 +6,219 @@
 </head>
 <body>
 <h1>RPG admin panel</h1>
+<h3>Accounts list:</h3>
+<label for="countPerPage">Count per page:</label>
+<select name="countPerPage" id="countPerPage" onchange="redrawInfo()">
+    <option value="3">3</option>
+    <option value="5">5</option>
+    <option value="10">10</option>
+    <option value="20">20</option>
+</select>
+<table id="accountTable" border="1">
+    <tr>
+        <th>#</th>
+        <th>Name</th>
+        <th>Title</th>
+        <th>Race</th>
+        <th>Profession</th>
+        <th>Level</th>
+        <th>Birthday</th>
+        <th>Banned</th>
+        <th>Edit</th>
+        <th>Delete</th>
+    </tr>
+</table>
+<div id="pagesButtons">Pages:</div>
+<script>
+    //Get players list from backEnd
+    function drawPlayersList(pageNumber, pageSize) {
+        let accountTable = document.getElementById("accountTable");
+        accountTable.innerHTML = '';
 
+        let playersListURI = "/rest/players?pageNumber=" + pageNumber + "&pageSize=" + pageSize;
+        $.getJSON(playersListURI, {
+            format: "json"
+        })
+            .done(function (playersList) {
+                $(function () {
+                    $.each(playersList, function (i, item) {
+                        var $tr = $('<tr>').append(
+                            $('<td>').text(item.id).attr("name", "id"),
+                            $('<td>').text(item.name).attr("name", "name"),
+                            $('<td>').text(item.title).attr("name", "title"),
+                            $('<td>').text(item.race).attr("name", "race"),
+                            $('<td>').text(item.profession).attr("name", "profession"),
+                            $('<td>').text(item.level).attr("name", "level"),
+                            $('<td>').text(item.birthday).attr("name", "birthday"),
+                            $('<td>').text(item.banned).attr("name", "banned"),
+                            $('<td>').append($('<img>').attr("src", "/img/edit.png").attr("name", "edit")),
+                            $('<td>').append($('<img>').attr("src", "/img/delete.png").attr("name", "delete"))
+                        ).appendTo('#accountTable');
+
+                        $tr.html()
+                    });
+                });
+            });
+    }
+
+
+    //Get total account count
+    function getTotalAccounts() {
+        let totalAccountsURI = "/rest/players/count";
+
+        let out;
+
+        $.ajax({
+            async: false,
+            url: totalAccountsURI,
+            type: "GET",
+            cache: false
+        }).done(function (totalAccs) {
+            out = totalAccs;
+        });
+
+        return out;
+    }
+
+
+    //Calculate total pages
+    function calculateTotalPages() {
+        let rowsPerPage = document.getElementById("countPerPage");
+        let pageSize = rowsPerPage.value;
+
+        let totalAccounts = getTotalAccounts();
+
+        let out;
+
+        if (totalAccounts === 1) {
+            out = 1;
+        } else if (totalAccounts < pageSize) {
+            out = 1;
+        } else if ((totalAccounts % pageSize) === 0) {
+            out = totalAccounts / pageSize;
+        } else {
+            out = totalAccounts / pageSize;
+            out = Math.floor(out);
+            out++;
+        }
+
+        return out;
+    }
+
+
+    let pickedPageNumber = 1;
+
+    //Add buttons under table to navigate between pages
+    function addPageButtons(totalPages) {
+        let buttonsElement = document.getElementById("pagesButtons");
+
+        buttonsElement.innerHTML = '';
+
+        for (let i = 1; i < totalPages + 1; i++) {
+            let button = document.createElement("BUTTON");
+            button.value = i;
+            button.name = "pageButton";
+            button.setAttribute("picked", "false");
+            button.innerHTML = "" + i;
+            button.style.color = "000000";
+
+            buttonsElement.appendChild(button);
+        }
+
+        let button = document.querySelector("#pagesButtons > [value='" + pickedPageNumber + "']");
+        button.style.color = "ff9900";
+        button.setAttribute("picked", "true");
+    }
+
+
+    window.onload = function () {
+        redrawInfo();
+    }
+
+
+    function redrawInfo() {
+        let totalPages = calculateTotalPages();
+        addPageButtons(totalPages);
+
+        let rowsPerPage = document.getElementById("countPerPage");
+        let pageSize = rowsPerPage.value;
+        drawPlayersList(pickedPageNumber - 1, pageSize);
+    }
+
+
+    function changePage() {
+        let rowsPerPage = document.getElementById("countPerPage");
+        let pageSize = rowsPerPage.value;
+
+        drawPlayersList(pickedPageNumber - 1, pageSize);
+        let oldPick = document.querySelector("#pagesButtons > [picked='true']");
+        oldPick.setAttribute("picked", "false");
+        oldPick.style.color = "000000";
+
+        let newPick = document.querySelector("#pagesButtons > [value='" + pickedPageNumber + "']");
+        newPick.setAttribute("picked", "true");
+        newPick.style.color = "ff9900";
+    }
+
+
+    function deleteById(id) {
+        totalAccountsURI = "/rest/players/" + id;
+        $.ajax({
+            async: false,
+            url: totalAccountsURI,
+            type: "DELETE",
+            cache: false
+        }).done(function () {
+            let rowsPerPage = document.getElementById("countPerPage");
+            let pageSize = rowsPerPage.value;
+            let pageHaveRows = checkPageHaveRows(pickedPageNumber - 1, pageSize);
+
+            if (pageHaveRows) {
+                drawPlayersList(pickedPageNumber - 1, pageSize);
+                let totalPages = calculateTotalPages();
+                addPageButtons(totalPages);
+            } else {
+                pickedPageNumber--;
+                redrawInfo();
+            }
+        });
+    }
+
+
+    function checkPageHaveRows(pageNumber, pageSize) {
+        let playersListURI = "/rest/players?pageNumber=" + pageNumber + "&pageSize=" + pageSize;
+
+        let out;
+
+        $.ajax({
+            async: false,
+            url: playersListURI,
+            type: "GET",
+            cache: false
+        }).done(function (playersList) {
+            out = !(playersList.length === 0);
+        });
+
+        return out;
+    }
+
+
+    document.addEventListener('click', function (e) {
+        if (e.target && e.target.name === 'pageButton') {
+            pickedPageNumber = e.target.value;
+            changePage();
+        }
+    });
+
+
+    document.addEventListener('click', function (e) {
+        if (e.target && e.target.name === 'delete') {
+            let id = e.target.parentElement.closest("tr").querySelector('[name="id"]').textContent;
+            deleteById(id);
+        }
+    });
+
+
+</script>
 </body>
 </html>
