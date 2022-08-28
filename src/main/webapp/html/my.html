@@ -30,6 +30,33 @@
 </table>
 <div id="pagesButtons">Pages:</div>
 <script>
+    const races = [
+        "HUMAN",
+        "DWARF",
+        "ELF",
+        "GIANT",
+        "ORC",
+        "TROLL",
+        "HOBBIT"
+    ];
+
+    const professions = [
+        "WARRIOR",
+        "ROGUE",
+        "SORCERER",
+        "CLERIC",
+        "PALADIN",
+        "NAZGUL",
+        "WARLOCK",
+        "DRUID"
+    ];
+
+    const banned = [
+        "true",
+        "false"
+    ];
+
+
     //Get players list from backEnd
     function drawPlayersList(pageNumber, pageSize) {
         let accountTable = document.getElementById("accountTable");
@@ -83,8 +110,9 @@
 
     //Calculate total pages
     function calculateTotalPages() {
-        let rowsPerPage = document.getElementById("countPerPage");
-        let pageSize = rowsPerPage.value;
+        let countPerPage = document.getElementById("countPerPage");
+
+        let pageSize = countPerPage.value;
 
         let totalAccounts = getTotalAccounts();
 
@@ -162,7 +190,7 @@
 
 
     function deleteById(id) {
-        totalAccountsURI = "/rest/players/" + id;
+        let totalAccountsURI = "/rest/players/" + id;
         $.ajax({
             async: false,
             url: totalAccountsURI,
@@ -203,6 +231,164 @@
     }
 
 
+    function editById(id) {
+        let xpath = "//td[text()='" + id + "']";
+        let idField = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+
+        let row = idField.parentElement;
+        let deleteButton = row.querySelector('[name="delete"]');
+        deleteButton.style.visibility = 'hidden';
+
+        let editButton = row.querySelector('[name="edit"]');
+        editButton.setAttribute("src", "/img/save.png");
+        editButton.setAttribute("name", "save");
+
+        let nameField = row.querySelector('[name="name"]');
+        nameField.setAttribute("contentEditable", "true");
+
+        let titleField = row.querySelector('[name="title"]');
+        titleField.setAttribute("contentEditable", "true");
+
+        let raceField = row.querySelector('[name="race"]');
+        addPickRaceForField(raceField, id);
+
+        let professionField = row.querySelector('[name="profession"]');
+        addPickProfessionForField(professionField, id);
+
+        let bannedField = row.querySelector('[name="banned"]');
+        addPickBannedForField(bannedField, id);
+    }
+
+
+    function saveById(id) {
+        let outJSON = getRowData(id);
+        updateRowToServer(id, outJSON);
+
+        let rowsPerPage = document.getElementById("countPerPage");
+        let pageSize = rowsPerPage.value;
+        drawPlayersList(pickedPageNumber - 1, pageSize);
+    }
+
+
+    function getRowData(id){
+        let xpath = "//td[text()='" + id + "']";
+        let idField = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+        let row = idField.parentElement;
+
+        let output = {};
+        let nameField = row.querySelector('[name="name"]');
+        output.name = nameField.textContent;
+
+        let titleField = row.querySelector('[name="title"]');
+        output.title = titleField.textContent;
+
+        let raceField = row.querySelector('[name="race"]');
+        let raceSelector = raceField.querySelector('[id=raceSelector' + id + ']');
+        output.race = raceSelector.value;
+
+        let professionField = row.querySelector('[name="profession"]');
+        let professionSelector = professionField.querySelector('[id=professionSelector' + id + ']');
+        output.profession = professionSelector.value;
+
+        let bannedField = row.querySelector('[name="banned"]');
+        let bannedSelector = bannedField.querySelector('[id=bannedSelector' + id + ']');
+        output.banned = bannedSelector.value;
+
+        return JSON.stringify(output);
+    }
+
+
+    function updateRowToServer(id, json){
+        let updateURI = "/rest/players/" + id;
+        $.ajax({
+            async: false,
+            url: updateURI,
+            type: "POST",
+            dataType: "json",
+            contentType: "application/json; charset=utf-8",
+            data: json,
+            cache: false
+        });
+    }
+
+    function addPickRaceForField(raceField, id){
+        let currentRace = raceField.textContent;
+        raceField.textContent = null;
+
+        let $select = $('<select>')
+            .attr("id", "raceSelector" + id)
+            .appendTo(raceField);
+
+        (function () {
+            $(function () {
+                $.each(races, function (i, item) {
+                    if(currentRace === item){
+                        $('<option>').text(item).attr("value", "" + item + "").attr("selected", "selected")
+                            .appendTo($select);
+                    } else {
+                        $('<option>').text(item).attr("value", "" + item + "")
+                            .appendTo($select);
+                    }
+                });
+            });
+        })();
+
+        $select.html();
+    }
+
+
+    function addPickProfessionForField(professionField, id){
+        let currentProfession = professionField.textContent;
+        professionField.textContent = null;
+
+        let $select = $('<select>')
+            .attr("id", "professionSelector" + id)
+            .appendTo(professionField);
+
+        (function () {
+            $(function () {
+                $.each(professions, function (i, item) {
+                    if(currentProfession === item){
+                        $('<option>').text(item).attr("value", "" + item + "").attr("selected", "selected")
+                            .appendTo($select);
+                    } else {
+                        $('<option>').text(item).attr("value", "" + item + "")
+                            .appendTo($select);
+                    }
+                });
+            });
+        })();
+
+        $select.html();
+    }
+
+
+    function addPickBannedForField(bannedField, id){
+        let currentBanned = bannedField.textContent;
+        bannedField.textContent = null;
+
+        let $select = $('<select>')
+            .attr("id", "bannedSelector" + id)
+            .appendTo(bannedField);
+
+        (function () {
+            $(function () {
+                $.each(banned, function (i, item) {
+                    if(currentBanned === item){
+                        $('<option>').text(item).attr("value", "" + item + "").attr("selected", "selected")
+                            .appendTo($select);
+                    } else {
+                        $('<option>').text(item).attr("value", "" + item + "")
+                            .appendTo($select);
+                    }
+                });
+            });
+        })();
+
+        $select.html();
+    }
+
+
     document.addEventListener('click', function (e) {
         if (e.target && e.target.name === 'pageButton') {
             pickedPageNumber = e.target.value;
@@ -218,6 +404,21 @@
         }
     });
 
+
+    document.addEventListener('click', function (e) {
+        if (e.target && e.target.name === 'save') {
+            let id = e.target.parentElement.closest("tr").querySelector('[name="id"]').textContent;
+            saveById(id);
+        }
+    });
+
+
+    document.addEventListener('click', function (e) {
+        if (e.target && e.target.name === 'edit') {
+            let id = e.target.parentElement.closest("tr").querySelector('[name="id"]').textContent;
+            editById(id);
+        }
+    });
 
 </script>
 </body>
