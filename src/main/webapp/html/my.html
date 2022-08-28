@@ -15,20 +15,42 @@
     <option value="20">20</option>
 </select>
 <table id="accountTable" border="1">
-    <tr>
-        <th>#</th>
-        <th>Name</th>
-        <th>Title</th>
-        <th>Race</th>
-        <th>Profession</th>
-        <th>Level</th>
-        <th>Birthday</th>
-        <th>Banned</th>
-        <th>Edit</th>
-        <th>Delete</th>
-    </tr>
 </table>
 <div id="pagesButtons">Pages:</div>
+<div id="createAccount">
+    <hr>
+    <h3>Create new account:</h3>
+    <form name="create" onsubmit="return false">
+        <label for="createName">Name:</label>
+        <input type="text" id="createName" name="createName"><br>
+
+        <label for="createTitle">Title:</label>
+        <input type="text" id="createTitle" name="createTitle"><br>
+
+        <label for="createRace">Race:</label>
+        <select id="createRace" name="createRace">
+        </select>
+        <br>
+
+        <label for="createProfession">Profession:</label>
+        <select id="createProfession" name="createProfession">
+        </select>
+        <br>
+
+        <label for="createLevel">Level:</label>
+        <input type="text" id="createLevel" name="createLevel"><br>
+
+        <label for="createBirthday">Birthday:</label>
+        <input type="date" id="createBirthday" name="createBirthday"><br>
+
+        <label for="createBanned">Banned:</label>
+        <select id="createBanned" name="createBanned">
+        </select>
+        <br>
+
+        <input type="submit" id="createSubmit" value="Save">
+    </form>
+</div>
 <script>
     const races = [
         "HUMAN",
@@ -62,6 +84,24 @@
         let accountTable = document.getElementById("accountTable");
         accountTable.innerHTML = '';
 
+        var $trHeader = $('<tr>')
+            .append(
+                $("<th>").text("#"),
+                $("<th>").text("Name"),
+                $("<th>").text("Title"),
+                $("<th>").text("Race"),
+                $("<th>").text("Profession"),
+                $("<th>").text("Level"),
+                $("<th>").text("Birthday"),
+                $("<th>").text("Banned"),
+                $("<th>").text("Edit"),
+                $("<th>").text("Delete")
+            ).appendTo('#accountTable');
+
+        $trHeader.attr("style", "background-color: rgb(204, 255, 255)");
+
+        $trHeader.html();
+
         let playersListURI = "/rest/players?pageNumber=" + pageNumber + "&pageSize=" + pageSize;
         $.getJSON(playersListURI, {
             format: "json"
@@ -69,6 +109,8 @@
             .done(function (playersList) {
                 $(function () {
                     $.each(playersList, function (i, item) {
+                        let date = new Date(item.birthday);
+
                         var $tr = $('<tr>').append(
                             $('<td>').text(item.id).attr("name", "id"),
                             $('<td>').text(item.name).attr("name", "name"),
@@ -76,13 +118,19 @@
                             $('<td>').text(item.race).attr("name", "race"),
                             $('<td>').text(item.profession).attr("name", "profession"),
                             $('<td>').text(item.level).attr("name", "level"),
-                            $('<td>').text(item.birthday).attr("name", "birthday"),
+                            $('<td>').text(date.toLocaleDateString()).attr("name", "birthday"),
                             $('<td>').text(item.banned).attr("name", "banned"),
                             $('<td>').append($('<img>').attr("src", "/img/edit.png").attr("name", "edit")),
                             $('<td>').append($('<img>').attr("src", "/img/delete.png").attr("name", "delete"))
                         ).appendTo('#accountTable');
 
-                        $tr.html()
+                        if(i % 2 === 0){
+                            $tr.attr("style", "background-color: rgb(204, 255, 204)");
+                        } else {
+                            $tr.attr("style", "background-color: rgb(255, 255, 204)");
+                        }
+
+                        $tr.html();
                     });
                 });
             });
@@ -171,6 +219,14 @@
         let rowsPerPage = document.getElementById("countPerPage");
         let pageSize = rowsPerPage.value;
         drawPlayersList(pickedPageNumber - 1, pageSize);
+        drawCreateAccount();
+    }
+
+
+    function drawCreateAccount() {
+        addPickRaceForCreateField();
+        addPickProfessionForCreateField();
+        addPickBannedForCreateField();
     }
 
 
@@ -250,13 +306,13 @@
         titleField.setAttribute("contentEditable", "true");
 
         let raceField = row.querySelector('[name="race"]');
-        addPickRaceForField(raceField, id);
+        addPickRaceForRow(raceField, id);
 
         let professionField = row.querySelector('[name="profession"]');
-        addPickProfessionForField(professionField, id);
+        addPickProfessionForRow(professionField, id);
 
         let bannedField = row.querySelector('[name="banned"]');
-        addPickBannedForField(bannedField, id);
+        addPickBannedForRow(bannedField, id);
     }
 
 
@@ -270,7 +326,7 @@
     }
 
 
-    function getRowData(id){
+    function getRowData(id) {
         let xpath = "//td[text()='" + id + "']";
         let idField = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
         let row = idField.parentElement;
@@ -298,7 +354,7 @@
     }
 
 
-    function updateRowToServer(id, json){
+    function updateRowToServer(id, json) {
         let updateURI = "/rest/players/" + id;
         $.ajax({
             async: false,
@@ -311,7 +367,8 @@
         });
     }
 
-    function addPickRaceForField(raceField, id){
+
+    function addPickRaceForRow(raceField, id) {
         let currentRace = raceField.textContent;
         raceField.textContent = null;
 
@@ -322,7 +379,7 @@
         (function () {
             $(function () {
                 $.each(races, function (i, item) {
-                    if(currentRace === item){
+                    if (currentRace === item) {
                         $('<option>').text(item).attr("value", "" + item + "").attr("selected", "selected")
                             .appendTo($select);
                     } else {
@@ -337,7 +394,60 @@
     }
 
 
-    function addPickProfessionForField(professionField, id){
+    function addPickRaceForCreateField() {
+        let createRace = document.getElementById("createRace");
+
+        (function () {
+            $(function () {
+                $.each(races, function (i, item) {
+                    let $option = $('<option>').text(item).attr("value", "" + item + "")
+                        .appendTo(createRace);
+                    $option.html();
+                });
+            });
+        })();
+    }
+
+
+    function addPickProfessionForCreateField() {
+        let createProfession = document.getElementById("createProfession");
+
+        (function () {
+            $(function () {
+                $.each(professions, function (i, item) {
+                    let $option = $('<option>').text(item).attr("value", "" + item + "")
+                        .appendTo(createProfession);
+                    $option.html();
+                });
+            });
+        })();
+    }
+
+
+    function addPickBannedForCreateField() {
+        let createBanned = document.getElementById("createBanned");
+
+        (function () {
+            $(function () {
+                $.each(banned, function (i, item) {
+                    let $option;
+
+                    if("false" === item){
+                        $option = $('<option>').text(item).attr("value", "" + item + "").attr("selected", "selected")
+                            .appendTo(createBanned);
+                    } else {
+                        $option = $('<option>').text(item).attr("value", "" + item + "")
+                            .appendTo(createBanned);
+                    }
+
+                    $option.html();
+                });
+            });
+        })();
+    }
+
+
+    function addPickProfessionForRow(professionField, id) {
         let currentProfession = professionField.textContent;
         professionField.textContent = null;
 
@@ -348,7 +458,7 @@
         (function () {
             $(function () {
                 $.each(professions, function (i, item) {
-                    if(currentProfession === item){
+                    if (currentProfession === item) {
                         $('<option>').text(item).attr("value", "" + item + "").attr("selected", "selected")
                             .appendTo($select);
                     } else {
@@ -363,7 +473,7 @@
     }
 
 
-    function addPickBannedForField(bannedField, id){
+    function addPickBannedForRow(bannedField, id) {
         let currentBanned = bannedField.textContent;
         bannedField.textContent = null;
 
@@ -374,7 +484,7 @@
         (function () {
             $(function () {
                 $.each(banned, function (i, item) {
-                    if(currentBanned === item){
+                    if (currentBanned === item) {
                         $('<option>').text(item).attr("value", "" + item + "").attr("selected", "selected")
                             .appendTo($select);
                     } else {
@@ -388,6 +498,58 @@
         $select.html();
     }
 
+
+    function createNewToServer(){
+        let createJson = makeCreateJson();
+        createRowToServer(createJson);
+
+        let rowsPerPage = document.getElementById("countPerPage");
+        let pageSize = rowsPerPage.value;
+        drawPlayersList(pickedPageNumber - 1, pageSize);
+        drawCreateAccount();
+    }
+
+    function createRowToServer(json) {
+        let updateURI = "/rest/players/";
+        $.ajax({
+            async: false,
+            url: updateURI,
+            type: "POST",
+            dataType: "json",
+            contentType: "application/json; charset=utf-8",
+            data: json,
+            cache: false
+        });
+    }
+
+    function makeCreateJson(){
+        let createData = {};
+
+        let createNameField = document.getElementById("createName");
+        createData.name = createNameField.value;
+
+        let createTitleField = document.getElementById("createTitle");
+        createData.title = createTitleField.value;
+
+        let createRaceField = document.getElementById("createRace");
+        createData.race = createRaceField.value;
+
+        let createProfessionField = document.getElementById("createProfession");
+        createData.profession = createProfessionField.value;
+
+        let createLevelField = document.getElementById("createLevel");
+        createData.level = createLevelField.value;
+
+        let createBirthdayField = document.getElementById("createBirthday");
+        let birthday = createBirthdayField.value;
+        let birthdayDate = new Date(birthday);
+        createData.birthday = birthdayDate.getTime();
+
+        let createBannedField = document.getElementById("createBanned");
+        createData.banned = createBannedField.value;
+
+        return JSON.stringify(createData);
+    }
 
     document.addEventListener('click', function (e) {
         if (e.target && e.target.name === 'pageButton') {
@@ -419,6 +581,17 @@
             editById(id);
         }
     });
+
+
+    document.addEventListener('click', function (e) {
+        if (e.target && e.target.id === 'createSubmit') {
+            createNewToServer();
+        }
+    });
+
+
+
+
 
 </script>
 </body>
